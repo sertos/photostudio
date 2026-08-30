@@ -1,0 +1,11 @@
+{
+  "id": "photostudio",
+  "name": "Solvra Photo Studio",
+  "category": "Fotografía y Edición Multimedia",
+  "description": "Solvra Photo Studio es una suite impulsada por IA (Gemini y Google Veo) para restaurar, retocar y animar fotografías. Permite mejorar nitidez, colorizar fotos antiguas y generar videos con música en segundos, logrando resultados profesionales de forma rápida e intuitiva sin conocimientos técnicos.",
+  "downloads": 26,
+  "rating": 4.5,
+  "reviews": 22,
+  "images": ["1.jpg", "2.jpg"],
+  "type": "marketplace"
+}

@@ -1,0 +1,32 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    env:
+      - 'COMMIT_SHA=$COMMIT_SHA'
+    args:
+      - '-c'
+      - |
+        export DOCKER_BUILDKIT=1
+        docker build \
+          --build-arg VITE_GEMINI_API_KEY=$_VITE_GEMINI_API_KEY \
+          -t us-central1-docker.pkg.dev/solvra-demos/cloud-run-source-deploy/photostudio:$$COMMIT_SHA .
+
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'us-central1-docker.pkg.dev/solvra-demos/cloud-run-source-deploy/photostudio:$COMMIT_SHA']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'photostudio'
+      - '--image=us-central1-docker.pkg.dev/solvra-demos/cloud-run-source-deploy/photostudio:$COMMIT_SHA'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+images:
+  - 'us-central1-docker.pkg.dev/solvra-demos/cloud-run-source-deploy/photostudio:$COMMIT_SHA'
