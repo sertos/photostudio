@@ -11,13 +11,14 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Helper para obtener cliente de GoogleGenAI
+// En server.ts:
 function getGenAI() {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error("GEMINI_API_KEY environment variable is missing.");
+    console.warn("⚠️ Warning: GEMINI_API_KEY environment variable is missing at startup.");
   }
   return new GoogleGenAI({
-    apiKey,
+    apiKey: apiKey || "dummy-key-for-startup",
     httpOptions: {
       headers: {
         "User-Agent": "aistudio-build",
