@@ -48,9 +48,9 @@ app.post("/api/edit-image", async (req, res) => {
 
     // Models to try in order of preference for image-to-image editing
     const candidateModels = [
-      "gemini-3.1-flash-lite-image",
-      "gemini-3.1-flash-image",
-      "gemini-3-pro-image",
+      "gemini-2.5-flash",
+      "gemini-1.5-flash",
+      "gemini-1.5-pro",
     ];
 
     let lastError: any = null;
@@ -58,22 +58,25 @@ app.post("/api/edit-image", async (req, res) => {
     for (const modelName of candidateModels) {
       try {
         console.log(`Attempting image edit with model: ${modelName}`);
+        // Ejemplo correcto para procesar imágenes en Node.js / TypeScript
         const response = await ai.models.generateContent({
-          model: modelName,
-          contents: {
-            parts: [
-              {
-                inlineData: {
-                  data: imageBase64,
-                  mimeType: mimeType || "image/jpeg",
-                },
-              },
-              {
-                text: `${prompt}. Please process this photo and return the modified/edited image.`,
-              },
-            ],
-          },
+          model: 'gemini-2.5-flash',
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { text: 'Describe esta imagen' },
+                {
+                  inlineData: {
+                    mimeType: 'image/jpeg',
+                    data: base64ImageString // Imagen en formato base64 sin el prefijo 'data:image/jpeg;base64,'
+                  }
+                }
+              ]
+            }
+          ]
         });
+        
 
         // Search through all candidate parts for the resulting image
         for (const candidate of response.candidates || []) {
