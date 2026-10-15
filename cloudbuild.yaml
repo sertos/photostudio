@@ -24,6 +24,7 @@ steps:
       - '--region=us-central1'
       - '--platform=managed'
       - '--allow-unauthenticated'
+      - '--set-env-vars=GEMINI_API_KEY=$_VITE_GEMINI_API_KEY'
 
 options:
   logging: CLOUD_LOGGING_ONLY
