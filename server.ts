@@ -4,13 +4,13 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, GenerateVideosOperation } from "@google/genai";
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
-// Body parser with support for large image payloads
+// Body parser con soporte para imágenes pesadas
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Helper to get GoogleGenAI client
+// Helper para obtener cliente de GoogleGenAI
 function getGenAI() {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -34,7 +34,7 @@ app.get("/api/health", (_req, res) => {
 // Edit / Enhance image with Gemini models
 app.post("/api/edit-image", async (req, res) => {
   try {
-    const { imageBase64, mimeType = "image/jpeg", prompt, action } = req.body;
+    const { imageBase64, mimeType = "image/jpeg", prompt } = req.body;
 
     if (!imageBase64) {
       return res.status(400).json({ error: "Missing imageBase64 in request body." });
@@ -44,9 +44,14 @@ app.post("/api/edit-image", async (req, res) => {
       return res.status(400).json({ error: "Missing prompt in request body." });
     }
 
+    // Limpiar prefijo data:image/... si viene presente
+    const cleanImageBase64 = imageBase64.includes(",") 
+      ? imageBase64.split(",")[1] 
+      : imageBase64;
+
     const ai = getGenAI();
 
-    // Models to try in order of preference for image-to-image editing
+    // Modelos candidatos en orden de preferencia
     const candidateModels = [
       "gemini-2.5-flash",
       "gemini-1.5-flash",
@@ -58,27 +63,26 @@ app.post("/api/edit-image", async (req, res) => {
     for (const modelName of candidateModels) {
       try {
         console.log(`Attempting image edit with model: ${modelName}`);
-        // Ejemplo correcto para procesar imágenes en Node.js / TypeScript
+
         const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: modelName,
           contents: [
             {
-              role: 'user',
+              role: "user",
               parts: [
-                { text: 'Describe esta imagen' },
+                { text: prompt },
                 {
                   inlineData: {
-                    mimeType: 'image/jpeg',
-                    data: base64ImageString // Imagen en formato base64 sin el prefijo 'data:image/jpeg;base64,'
+                    mimeType: mimeType,
+                    data: cleanImageBase64
                   }
                 }
               ]
             }
           ]
         });
-        
 
-        // Search through all candidate parts for the resulting image
+        // Buscar imagen modificada en las respuestas
         for (const candidate of response.candidates || []) {
           for (const part of candidate.content?.parts || []) {
             if (part.inlineData && part.inlineData.data) {
@@ -92,11 +96,14 @@ app.post("/api/edit-image", async (req, res) => {
           }
         }
 
-        // If no image was found in response parts
+        // Si devolvió solo texto
         const textPart = response.text;
         if (textPart) {
           console.warn(`Model ${modelName} returned text instead of image:`, textPart.substring(0, 150));
-          lastError = new Error(textPart);
+          return res.json({
+            resultText: textPart,
+            modelUsed: modelName,
+          });
         }
       } catch (err: any) {
         console.error(`Model ${modelName} failed:`, err?.message || err);
@@ -104,9 +111,8 @@ app.post("/api/edit-image", async (req, res) => {
       }
     }
 
-    // If all AI models failed, return detailed error
     const statusCode = lastError?.status || lastError?.statusCode || 500;
-    const message = lastError?.message || "No modified image was returned by the AI model.";
+    const message = lastError?.message || "No modified response was returned by the AI model.";
     return res.status(statusCode).json({ error: message });
   } catch (error: any) {
     console.error("Error in /api/edit-image:", error);
@@ -125,13 +131,17 @@ app.post("/api/generate-video", async (req, res) => {
       return res.status(400).json({ error: "Missing imageBase64 in request body." });
     }
 
+    const cleanImageBase64 = imageBase64.includes(",") 
+      ? imageBase64.split(",")[1] 
+      : imageBase64;
+
     const ai = getGenAI();
 
     const operation = await ai.models.generateVideos({
       model: "veo-3.1-lite-generate-preview",
       prompt: prompt || "Cinematic camera movement and dynamic subtle depth, realistic motion",
       image: {
-        imageBytes: imageBase64,
+        imageBytes: cleanImageBase64,
         mimeType: mimeType || "image/jpeg",
       },
       config: {
@@ -255,7 +265,7 @@ async function start() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Solvra Photo Studio server running on http://0.0.0.0:${PORT}`);
+    console.log(`Server running on port ${PORT}`);
   });
 }
 
