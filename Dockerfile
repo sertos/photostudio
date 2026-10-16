@@ -1,21 +1,26 @@
-FROM node:20-alpine
+# Cambiamos Alpine por Debian Slim. Evita el 99% de los errores de npm install con esbuild.
+FROM node:20-slim
 
 WORKDIR /app
 
-# 1. Copiamos manifiestos
+# Copiamos solo los manifiestos primero
 COPY package*.json ./
 
-# 2. Instalamos TODO (dev y prod). Sin podar nada.
-RUN rm -f package-lock.json && npm install --legacy-peer-deps
+# Limpiamos el lock e instalamos. Si falla, obligamos a Docker a imprimir el log real del error.
+RUN rm -f package-lock.json && \
+    npm install --legacy-peer-deps || \
+    (cat /root/.npm/_logs/*-debug*.log && exit 1)
 
-# 3. Copiamos el código y compilamos
+# Copiamos el resto del código
 COPY . .
+
+# Compilamos
 RUN npm run build
 
-# 4. Variables obligatorias para Cloud Run
+# Configuramos entorno
 ENV NODE_ENV=production
 ENV PORT=8080
 EXPOSE 8080
 
-# 5. Ejecutamos
+# Ejecutamos con el blidaje anti-crash
 CMD ["node", "dist/server.cjs"]
