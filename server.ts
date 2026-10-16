@@ -197,8 +197,7 @@ app.post("/api/video-status", async (req, res) => {
       safetyReason,
       hasVideo: !!updated.response?.generatedVideos?.[0]?.video?.uri,
     });
-  } catch (error:
-// ... continuación de catch en /api/video-status
+  } catch (error: any) {
     console.error("Error in /api/video-status:", error);
     const statusCode = error?.status || error?.statusCode || 500;
     const message = error?.message || "Failed to check video generation status.";
