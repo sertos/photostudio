@@ -2,8 +2,16 @@ import express from "express";
 import path from "path";
 import { GoogleGenAI, GenerateVideosOperation } from "@google/genai";
 
+// --- BLINDAJE ANTI-CRASH ---
+process.on("uncaughtException", (err) => {
+  console.error("🔥 FATAL UNCAUGHT EXCEPTION:", err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("🔥 FATAL UNHANDLED REJECTION:", reason);
+});
+// ---------------------------
+
 const app = express();
-// Puerto dinámico asegurando fallback al 8080 para Cloud Run
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 8080;
 
 // Body parser con soporte para imágenes pesadas
