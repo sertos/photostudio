@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # 2. Instalamos TODO (dev y prod). Sin podar nada.
-RUN npm install
+RUN rm -f package-lock.json && npm install --legacy-peer-deps
 
 # 3. Copiamos el código y compilamos
 COPY . .
