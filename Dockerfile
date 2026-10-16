@@ -1,18 +1,26 @@
-# Imagen completa y pesada, garantizada para compilar módulos nativos
-FROM node:20
-
+# Usamos la imagen COMPLETA de Node (sin -slim ni -alpine) para tener todas las librerías nativas de Linux
+FROM node:20 AS build
 WORKDIR /app
 
+# Copiamos manifiestos
 COPY package*.json ./
 
-# Instalamos con bandera verbose para que no oculte absolutamente nada
-RUN npm install || (cat /root/.npm/_logs/*.log && exit 1)
+# Instalamos de forma limpia
+RUN npm install
 
+# Copiamos el resto del código
 COPY . .
+
+# Variables y Build
+ARG VITE_GEMINI_API_KEY
+ENV VITE_GEMINI_API_KEY=$VITE_GEMINI_API_KEY
+
 RUN npm run build
 
-ENV NODE_ENV=production
-ENV PORT=8080
-EXPOSE 8080
+# Etapa final Nginx (esta sí sigue siendo ultraligera)
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+RUN sed -i 's/listen  *80;/listen 8080;/g' /etc/nginx/conf.d/default.conf
 
-CMD ["node", "dist/server.cjs"]
+EXPOSE 8080
+CMD ["nginx", "-g", "daemon off;"]
