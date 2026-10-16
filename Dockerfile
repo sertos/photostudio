@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instalamos con bandera verbose para que no oculte absolutamente nada
-RUN rm -f package-lock.json && npm install --verbose
+RUN npm install || (cat /root/.npm/_logs/*.log && exit 1)
 
 COPY . .
 RUN npm run build
