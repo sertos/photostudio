@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Instalamos de forma limpia
-RUN npm install
+RUN npm install || (cat /root/.npm/_logs/*.log && exit 1)
 
 # Copiamos el resto del código
 COPY . .
