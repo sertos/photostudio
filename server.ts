@@ -32,8 +32,22 @@ app.post("/api/edit-image", async (req, res) => {
     const ai = getGenAI();
     
     const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType, data: cleanImageBase64 } }] }]
+      model: "gemini-3.1-flash-image",
+      contents: [{
+        role: "user",
+        parts: [
+          { text: prompt },
+          {
+            inlineData: {
+              mimeType,
+              data: cleanImageBase64
+            }
+          }
+        ]
+      }],
+      config: {
+        responseModalities: ["TEXT", "IMAGE"]
+      }
     });
 
     for (const candidate of response.candidates || []) {
