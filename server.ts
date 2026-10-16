@@ -190,3 +190,89 @@ app.post("/api/video-status", async (req, res) => {
       hasVideo: !!updated.response?.generatedVideos?.[0]?.video?.uri,
     });
   } catch (error:
+// ... continuación de catch en /api/video-status
+    console.error("Error in /api/video-status:", error);
+    const statusCode = error?.status || error?.statusCode || 500;
+    const message = error?.message || "Failed to check video generation status.";
+    return res.status(statusCode).json({ error: message });
+  }
+});
+
+// Download finished video as stream
+app.post("/api/video-download", async (req, res) => {
+  try {
+    const { operationName } = req.body;
+
+    if (!operationName) {
+      return res.status(400).json({ error: "Missing operationName in request body." });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: "GEMINI_API_KEY is not configured." });
+    }
+
+    const ai = getGenAI();
+    const op = new GenerateVideosOperation();
+    op.name = operationName;
+
+    const updated = await ai.operations.getVideosOperation({ operation: op });
+    const videoUri = updated.response?.generatedVideos?.[0]?.video?.uri;
+
+    if (!videoUri) {
+      return res.status(404).json({ error: "Video URI not found or video is not ready yet." });
+    }
+
+    const videoRes = await fetch(videoUri, {
+      headers: { "x-goog-api-key": apiKey },
+    });
+
+    if (!videoRes.ok) {
+      const errText = await videoRes.text();
+      return res.status(videoRes.status).json({
+        error: `Failed to download video stream from Google storage: ${videoRes.status} ${errText}`,
+      });
+    }
+
+    const arrayBuffer = await videoRes.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    res.setHeader("Content-Type", "video/mp4");
+    res.setHeader("Content-Length", buffer.length.toString());
+    res.setHeader("Content-Disposition", `attachment; filename="video_${Date.now()}.mp4"`);
+    return res.send(buffer);
+  } catch (error: any) {
+    console.error("Error in /api/video-download:", error);
+    const statusCode = error?.status || error?.statusCode || 500;
+    const message = error?.message || "Failed to download generated video.";
+    return res.status(statusCode).json({ error: message });
+  }
+});
+
+// Setup Vite middleware for development or Static file serving for production
+async function start() {
+  if (process.env.NODE_ENV !== "production") {
+    // eval() evita que esbuild convierta la importación dinámica en un require() estático
+    // Esto previene que el contenedor de Cloud Run crashee buscando el módulo 'vite'
+    const viteModule = await eval('import("vite")');
+    const vite = await viteModule.createServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (_req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+start().catch((err) => {
+  console.error("Failed to start server:", err);
+});
